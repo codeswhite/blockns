@@ -1,33 +1,30 @@
 #!/usr/bin/python3
 
 """
+A script that will manage, download, backup and install hosts file in order to block ads
 
-# Requires: requests
+! Requires:
+*  requests
+*  termcolor
 
+# Exit codes:
+* -1 => User exit
+*  0 => OK
+*  1 => Root required
+*  2 => Couldn't download blocklist
+*  3 => System unsupported
 """
 
-from os.path import isfile
+import os
+import shutil
+
+from termcolor import colored
 
 
-class bcolors:
-    HEADER = '\033[95m'
-    OKBLUE = '\033[94m'
-    OKGREEN = '\033[92m'
-    WARNING = '\033[93m'
-    FAIL = '\033[91m'
-    ENDC = '\033[0m'
-
-    GOOD = OKGREEN + '[+] ' + ENDC
-    DOT = OKBLUE + '[*] ' + ENDC
-    BAD = FAIL + '[-] ' + ENDC
-
-    def disable(self):
-        self.HEADER = ''
-        self.OKBLUE = ''
-        self.OKGREEN = ''
-        self.WARNING = ''
-        self.FAIL = ''
-        self.ENDC = ''
+class Term:
+    GOOD = colored('[+] ', 'green')
+    DOT = colored('[*] ', 'cyan')
+    BAD = colored('[-] ', 'red')
 
 
 def find_hosts_file():
@@ -41,70 +38,57 @@ def find_hosts_file():
     elif sys == 'Android':
         return '/system/etc/hosts'
     else:
-        print(bcolors.BAD + 'Only supported systems are Windows, Linux and Android!')
-        exit(4)
+        print(Term.BAD + 'Only supported systems are Windows, Linux and Android!')
+        exit(3)
 
 
+BACKUP_SUFFIX = '.blocknsbackup'
 HOSTS = find_hosts_file()
-print(bcolors.DOT + 'Using hosts file: ' + HOSTS)
-BACKUP_SUFFIX = '.blockerback'
 
 
-def download_blocklist():
-    source = 'https://raw.githubusercontent.com/StevenBlack/hosts/master/alternates/fakenews-gambling/hosts'
+def download_blocklist(source):
     from requests import get
 
-    print(bcolors.GOOD + 'Downloading blocklist..')
+    print(Term.GOOD + 'Downloading blocklist..')
     resp = get(source)
     if resp.status_code != 200:
-        print(bcolors.BAD + 'Bad status code received from endpoint!', resp.status_code)
+        print(Term.BAD + 'Bad status code received from endpoint!', resp.status_code)
         exit(2)
     return resp.text
 
 
-def apply(text):
-    from shutil import copy
-    copy(HOSTS, HOSTS + BACKUP_SUFFIX)
-
-    with open(HOSTS, 'a') as f:
-        f.write('\n##### AD BLOCKER STARTS HERE\n')
-        f.write(text)
-    print(bcolors.GOOD + 'Blocklist applied successfully!')
-
-
-def restore():
-    if not isfile(HOSTS + BACKUP_SUFFIX):
-        print('FATAL! no backup file found!!')
-        exit(3)
-    from shutil import move
-    move(HOSTS + BACKUP_SUFFIX, HOSTS)
-    print(bcolors.GOOD + 'Blocklist restored successfully!')
-
-
 if __name__ == '__main__':
+
+    if os.getuid() != 0:
+        print(Term.BAD + 'This program should run as root in order to edit system hosts file')
+        exit(1)
+
+    print(Term.DOT + 'Using hosts file: ' + HOSTS)
+
 
     def prompt():
         try:
             input()
             return True
         except KeyboardInterrupt:
-            return False
+            exit(-1)
 
 
-    from os import getuid
+    if os.path.isfile(HOSTS + BACKUP_SUFFIX):
+        print(Term.DOT + 'Status: %s' % colored('APPLIED', 'green', attrs=['bold']))
+        print(Term.DOT + 'Press %s to restore default hosts file' % colored('[ENTER]', attrs=['bold']))
+        prompt()
 
-    if getuid() != 0:
-        print(bcolors.BAD + 'This program should run as root in order to edit system hosts file')
-        exit(1)
+        shutil.move(HOSTS + BACKUP_SUFFIX, HOSTS)
+        print(Term.GOOD + 'Blocklist restored successfully!')
 
-    if isfile(HOSTS + BACKUP_SUFFIX):
-        print(bcolors.DOT + 'Status: %sAPPLIED' % bcolors.OKGREEN + bcolors.ENDC)
-        print(bcolors.DOT + 'Press [ENTER] to restore default hosts file')
-        if prompt():
-            restore()
     else:
-        print(bcolors.DOT + 'Status: %sNOT APPLIED' % bcolors.FAIL + bcolors.ENDC)
-        print(bcolors.DOT + 'Press [ENTER] to download and install system ad blocker patch')
-        if prompt():
-            lst = download_blocklist()
-            apply(lst)
+        print(Term.DOT + 'Status: %s' % colored('NOT APPLIED', 'red', attrs=['bold']))
+        print(Term.DOT + 'Press %s to download and install system DNS ad blocker' % colored('[ENTER]', attrs=['bold']))
+        prompt()
+
+        shutil.copy(HOSTS, HOSTS + BACKUP_SUFFIX)
+        with open(HOSTS, 'a') as f:
+            f.write('\n##### AD BLOCKER STARTS HERE\n')
+            f.write(download_blocklist('https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts'))
+        print(Term.GOOD + 'Blocklist applied successfully!')
