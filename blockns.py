@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 """
-A script that will manage, download, backup and install hosts file in order to block ads
+A script that will download, backup and install hosts file in order to block ads globally
 
 ! Requires:
 *  requests
@@ -13,6 +13,10 @@ A script that will manage, download, backup and install hosts file in order to b
 *  1 => Root required
 *  2 => Couldn't download blocklist
 *  3 => System unsupported
+
+~=~ TODO
+* Add a configuration file which will contain preferred blocklist source(s)
+* Implement argument parsing via argparse
 """
 
 import os
