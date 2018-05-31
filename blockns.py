@@ -78,12 +78,12 @@ def download_blocklist(source):
 
 
 def root_check():
-    from ctypes import windll
+    import ctypes 
 
     try:
         is_admin = os.getuid() == 0
     except AttributeError:
-        is_admin = windll.shell32.IsUserAnAdmin() != 0
+        is_admin = ctypes.windll.shell32.IsUserAnAdmin() != 0
     return is_admin
 
 
