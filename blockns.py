@@ -53,7 +53,7 @@ HOSTS = find_hosts_file()
 def download_blocklist(source):
     from requests import get
 
-    print(Term.GOOD + 'Downloading blocklist..')
+    print(Term.GOOD + 'Downloading blocklist from: %s' % colored(source, 'cyan'))
     resp = get(source)
     if resp.status_code != 200:
         print(Term.BAD + 'Bad status code received from endpoint!', resp.status_code)
@@ -84,7 +84,7 @@ if __name__ == '__main__':
         prompt()
 
         shutil.move(HOSTS + BACKUP_SUFFIX, HOSTS)
-        print(Term.GOOD + 'Blocklist restored successfully!')
+        print(Term.GOOD + 'Blocklist restored successfully, probably a restart is required!')
 
     else:
         print(Term.DOT + 'Status: %s' % colored('NOT APPLIED', 'red', attrs=['bold']))
@@ -95,4 +95,4 @@ if __name__ == '__main__':
         with open(HOSTS, 'a') as f:
             f.write('\n##### AD BLOCKER STARTS HERE\n')
             f.write(download_blocklist('https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts'))
-        print(Term.GOOD + 'Blocklist applied successfully!')
+        print(Term.GOOD + 'Blocklist applied successfully, probably a restart is required!')
