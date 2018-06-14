@@ -21,7 +21,6 @@ A script that will download, backup and install hosts file in order to block ads
 
 import os
 import shutil
-from platform import system
 
 
 class Term:
@@ -39,52 +38,8 @@ class Term:
     BAD = FAIL + '[-] ' + ENDC
 
 
-SYS = system()
-
-
 def pr(text, m):
-    if SYS == 'Windows':
-        print(text)
-    else:
-        print(getattr(Term, m) + text)
-
-
-def find_hosts_file():
-    # Determine by OS
-    if SYS == 'Linux':
-        return '/etc/hosts'
-    elif SYS == 'Windows':
-        return 'c:\Windows\System32\Drivers\etc\hosts'
-    elif SYS == 'Android':
-        return '/system/etc/hosts'
-    else:
-        pr('Only supported systems are Windows, Linux and Android!', 'BAD')
-        exit(3)
-
-
-BACKUP_SUFFIX = '.blocknsbackup'
-HOSTS = find_hosts_file()
-
-
-def download_blocklist(source):
-    from requests import get
-
-    pr('Downloading blocklist from: %s' % source, 'GOOD')
-    resp = get(source)
-    if resp.status_code != 200:
-        pr('Bad status code received from endpoint: %d' % resp.status_code, 'BAD')
-        exit(2)
-    return resp.text
-
-
-def root_check():
-    import ctypes 
-
-    try:
-        is_admin = os.getuid() == 0
-    except AttributeError:
-        is_admin = ctypes.windll.shell32.IsUserAnAdmin() != 0
-    return is_admin
+    print(getattr(Term, m) + text)
 
 
 def prompt():
@@ -95,35 +50,63 @@ def prompt():
         exit(-1)
 
 
+def find_hosts_file():
+    # Determine by OS
+    from platform import system
+    sys = system()
+    if sys == 'Linux':
+        return '/etc/hosts'
+    elif sys == 'Android':
+        return '/system/etc/hosts'
+    else:
+        pr('Only supported systems are Linux and Android!', 'BAD')
+        exit(3)
+
+
+def download_blocklist():
+    from urllib.request import urlopen
+    from time import time
+
+    pr('Connecting to: %s' % source, 'GOOD')
+    data = []
+    last_time = time()
+    with urlopen(source) as stream:
+        pr('Connection took %f seconds' % (time() - last_time), 'DOT')
+        pr('Downloading blocklist..', 'GOOD')
+        last_time = time()
+        for line in stream:
+            data.append(line.decode())
+        pr('%s lines downloaded in %f seconds' % (len(data), time() - last_time), 'DOT')
+    return ''.join(data)
+
+
 if __name__ == '__main__':
 
-    if not root_check():
+    if os.getuid() != 0:
         pr('This program should run as root in order to edit system hosts file', 'BAD')
         exit(1)
 
-    pr('Using hosts file: ' + HOSTS, 'DOT')
+    backup_suffix = '.blocknsbackup'
+    source = 'https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts'
 
-    if os.path.isfile(HOSTS + BACKUP_SUFFIX):
-        if SYS != 'Windows':
-            pr('Status: %s' % (Term.OKGREEN + Term.BOLD + 'APPLIED' + Term.ENDC), 'DOT')
-        else:
-            print('Status: APPLIED')
+    hosts = find_hosts_file()
+    pr('Using hosts file: ' + hosts, 'DOT')
+
+    if os.path.isfile(hosts + backup_suffix):
+        pr('Status: %s' % (Term.OKGREEN + Term.BOLD + 'APPLIED' + Term.ENDC), 'DOT')
         pr('Press [ENTER] to restore default hosts file', 'DOT')
         prompt()
 
-        shutil.move(HOSTS + BACKUP_SUFFIX, HOSTS)
+        shutil.move(hosts + backup_suffix, hosts)
         pr('Blocklist restored successfully, probably a restart is required!', 'GOOD')
 
     else:
-        if SYS != 'Windows':
-            pr('Status: %s' % (Term.OKGREEN + Term.BOLD + 'NOT APPLIED' + Term.ENDC), 'DOT')
-        else:
-            print('Status: NOT APPLIED')
+        pr('Status: %s' % (Term.FAIL + Term.BOLD + 'NOT APPLIED' + Term.ENDC), 'DOT')
         pr('Press [ENTER] to download and install system DNS ad blocker', 'DOT')
         prompt()
 
-        shutil.copy(HOSTS, HOSTS + BACKUP_SUFFIX)
-        with open(HOSTS, 'a') as f:
+        shutil.copy(hosts, hosts + backup_suffix)
+        with open(hosts, 'a') as f:
             f.write('\n##### AD BLOCKER STARTS HERE\n')
-            f.write(download_blocklist('https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts'))
+            f.write(download_blocklist())
         pr('Blocklist applied successfully, probably a restart is required!', 'GOOD')
