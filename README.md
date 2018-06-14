@@ -19,7 +19,7 @@ Install python dependencies via pip
 pip install -r ./requirements.txt
 ```
 
-Once all dependencies are intact run the script as RO0T!
+Once all dependencies are intact run the script as root!
 
 ```
 python3 ./blockns.py
