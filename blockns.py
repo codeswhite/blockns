@@ -17,13 +17,14 @@ A script that will download, backup and install hosts file in order to block ads
 ~=~ TODO
 * Add a configuration file which will contain preferred blocklist source(s)
 * Implement argument parsing via argparse
+* Improve recognition of existing blockns hosts file
 """
 
 import builtins
 import os
 import shutil
 
-from utils import download_blocklist, prompt
+import utils
 
 
 class Term:
@@ -61,19 +62,20 @@ def find_hosts_file():
 
 
 def main():
+    source = 'https://raw.githubusercontent.com/EnergizedProtection/block/master/basic/formats/hosts'
+    backup_suffix = '.blocknsbackup'
+
     if os.getuid() != 0:
         pr('This program should run as root in order to edit system hosts file', 'BAD')
         exit(1)
-
-    backup_suffix = '.blocknsbackup'
 
     hosts = find_hosts_file()
     pr('Using hosts file: ' + hosts, 'DOT')
 
     if os.path.isfile(hosts + backup_suffix):
-        pr('Status: %s' % (Term.OKGREEN + Term.BOLD + 'APPLIED' + Term.ENDC), 'DOT')
+        pr('[Status %s]' % (Term.OKGREEN + Term.BOLD + 'APPLIED' + Term.ENDC), 'DOT')
         pr('Press [ENTER] to restore default hosts file', 'DOT')
-        prompt()
+        utils.prompt()
 
         shutil.move(hosts + backup_suffix, hosts)
         pr('Blocklist restored successfully, probably a restart is required!', 'GOOD')
@@ -81,16 +83,15 @@ def main():
     else:
         pr('Status: %s' % (Term.FAIL + Term.BOLD + 'NOT APPLIED' + Term.ENDC), 'DOT')
         pr('Press [ENTER] to download and install system DNS ad blocker', 'DOT')
-        prompt()
+        utils.prompt()
 
         shutil.copy(hosts, hosts + backup_suffix)
-        data, tt = download_blocklist('https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts')
+        pr('Fetching %s' % source, 'GOOD')
+        data, tt = utils.download_blocklist(source)
         pr('%s bytes downloaded in %f seconds' % (len(data), tt), 'DOT')
-        with open(hosts, 'a') as f:
-            f.write('\n##### AD BLOCKER STARTS HERE\n')
+        with open(hosts, 'w') as f:
             f.write(data)
         pr('Blocklist applied successfully, probably a restart is required!', 'GOOD')
-
 
 if __name__ == '__main__':
     main()

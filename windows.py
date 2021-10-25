@@ -22,7 +22,7 @@ import os
 import shutil
 from sys import exit
 
-from utils import download_blocklist, prompt
+import utils
 
 
 def admin_priv_check():
@@ -33,9 +33,9 @@ def admin_priv_check():
 
 
 def main():
+    source = 'https://raw.githubusercontent.com/StevenBlack/hosts/master/alternates/fakenews-gambling/hosts'
     hosts = 'c:\\Windows\\System32\\Drivers\\etc\\hosts'
     backup_suffix = '.blocknsbackup'
-    source = 'https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts'
 
     if not os.path.isfile(hosts):
         print('[X] This version only supports Windows!')
@@ -45,10 +45,10 @@ def main():
 
     print('[*] Using hosts file: ' + hosts)
 
-    if os.path.isfile(hosts + backup_suffix):
-        print('Status: APPLIED')
+    if os.path.isfile(hosts + backup_suffix):  # Backup present
+        print('[Status: APPLIED]')
         print('[*] Press [ENTER] to restore default hosts file')
-        prompt()
+        utils.prompt()
 
         shutil.move(hosts + backup_suffix, hosts)
         print('[+] Blocklist restored successfully, probably a restart is required!')
@@ -56,15 +56,14 @@ def main():
     else:
         print('[Status: NOT APPLIED]')
         print('[*] Press [ENTER] to download and install system DNS ad blocker')
-        prompt()
+        utils.prompt()
 
         shutil.copy(hosts, hosts + backup_suffix)
-        print('[+] Fetching: %s' % source)
-        data, tt = download_blocklist(source)
+        print('[+] Fetching %s' % source)
+        data, tt = utils.download_blocklist(source)
         print('[*] %s bytes downloaded in %f seconds' % (len(data), tt))
-        with open(hosts, 'a') as f:
-            f.write('\n##### BLOCKNS STARTS HERE\n')
-            f.write(data)
+        with open(hosts, 'wb') as f:
+            f.write(data.encode('utf-8'))
         print('[+] Blocklist applied successfully, probably a restart is required!')
 
 

@@ -5,7 +5,7 @@ def download_blocklist(source):
     # try: TODO
     with urlopen(source) as stream:
         last_time = time()
-        data = stream.read().decode()
+        data: str = stream.read().decode()
     return data, time() - last_time
 
 
