@@ -3,6 +3,10 @@
 A script that will download, backup and install
 hosts blocklist in order to block ads.
 
+### Tested on
+- Windows 10
+- Arch Linux
+
 ## Preparing & Running
 
 Firstly we want to clone (download) the repository
